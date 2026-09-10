@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>mainMenu</class>
+ <widget class="QWidget" name="mainMenu">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>405</width>
+    <height>552</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+   background-color: rgb(29,29,29);
+   </string>
+  </property>
+  <widget class="QPushButton" name="speedHack">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>10</y>
+     <width>401</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #34495e;
+    border-color: #415b76;
+}
+QPushButton:checked {
+    background-color: #27ae60;
+    border-color: #2ecc71;
+}
+</string>
+   </property>
+   <property name="text">
+    <string>Toggle Speed Hack</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="speedHackSpeed">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>50</y>
+     <width>401</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">LineEdit {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="freezeButton">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>110</y>
+     <width>131</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #34495e;
+    border-color: #415b76;
+}
+QPushButton:checked {
+    background-color: #27ae60;
+    border-color: #2ecc71;
+}
+</string>
+   </property>
+   <property name="text">
+    <string>Freeze Health</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="freezeButton" stdset="0">
+    <rect>
+     <x>130</x>
+     <y>50</y>
+     <width>131</width>
+     <height>51</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="Aimbot">
+   <property name="geometry">
+    <rect>
+     <x>270</x>
+     <y>110</y>
+     <width>131</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #34495e;
+    border-color: #415b76;
+}
+QPushButton:checked {
+    background-color: #27ae60;
+    border-color: #2ecc71;
+}
+</string>
+   </property>
+   <property name="text">
+    <string>Toggle Aimbot</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
