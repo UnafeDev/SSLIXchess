@@ -5,8 +5,8 @@
 #include <d3d11.h>
 #include <string.h>
 
-#include "threadDeclarations.h"
-#include "MEMoffsets.h"
+#include "headers/threadDeclarations.h"
+#include "headers/MEMoffsets.h"
 
 
 // Address helper

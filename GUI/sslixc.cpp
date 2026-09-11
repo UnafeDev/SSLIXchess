@@ -37,7 +37,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
-#include "threadDeclarations.h"
+#include "headers/threadDeclarations.h"
 
 typedef HRESULT(WINAPI* Present_t)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 Present_t oPresent = nullptr;

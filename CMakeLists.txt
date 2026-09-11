@@ -5,7 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(FPSChessCheat SHARED
-    sslixc.cpp
+    GUI/sslixc.cpp
+    headers/MEMoffsets.h
+    cpp/worker.cpp
+    headers/threadDeclarations.h
+
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
     imgui/imgui_widgets.cpp
@@ -18,9 +22,6 @@ add_library(FPSChessCheat SHARED
     MinSrc/hde/hde32.c
     MinSrc/hde/hde64.c
     MinSrc/MinHook.h
-    MEMoffsets.h
-    worker.cpp
-    threadDeclarations.h
 )
 
 target_include_directories(FPSChessCheat PRIVATE
