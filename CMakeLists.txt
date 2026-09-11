@@ -19,6 +19,8 @@ add_library(FPSChessCheat SHARED
     MinSrc/hde/hde64.c
     MinSrc/MinHook.h
     MEMoffsets.h
+    worker.cpp
+    threadDeclarations.h
 )
 
 target_include_directories(FPSChessCheat PRIVATE
