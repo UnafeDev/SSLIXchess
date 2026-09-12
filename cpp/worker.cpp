@@ -231,10 +231,12 @@ void espWorker()
             rotationAddr   = calculateAddress(H_CAMERA_MATRIX, H_CAMERA_MATRIX_OFFSETS);
             fovAddr        = calculateAddress(H_FOV_BASE, H_FOV_OFFSETS);
             myCoordsAddr   = calculateAddress(H_BASE_COORDS, H_PLAYER_COORD_OFFSETS);
-            enemyCoordsAddr = calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);
+            enemyCoordsAddr= calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);
         } else {
+            rotationAddr   = calculateAddress(C_CAMERA_MATRIX, C_CAMERA_MATRIX_OFFSETS);
             fovAddr        = calculateAddress(C_FOV_BASE, C_FOV_OFFSETS);
-            enemyCoordsAddr = calculateAddress(C_E_BASE_COORDS, C_E_PLAYER_COORD_OFFSETS);
+            myCoordsAddr   = calculateAddress(C_BASE_COORDS, C_COORDS_OFFSETS);
+            enemyCoordsAddr= calculateAddress(C_E_BASE_COORDS, C_E_PLAYER_COORD_OFFSETS);
         }
 
         if (rotationAddr != 0 && fovAddr != 0 && myCoordsAddr != 0 && enemyCoordsAddr != 0 &&

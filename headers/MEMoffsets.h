@@ -44,12 +44,15 @@ inline const std::vector<unsigned int> H_CAMERA_MATRIX_OFFSETS  { 0x118, 0x318, 
 inline Vector3 g_LatestEnemyCoords = { 0.0f, 0.0f, 0.0f };
 
 // Client Bound
-
+inline constexpr uintptr_t C_CAMERA_MATRIX       = 0x043C7B38;
+inline constexpr uintptr_t C_BASE_COORDS         = 0x0488FE78;
 inline constexpr uintptr_t C_FOV_BASE            = 0x043C7AA8;
 inline constexpr uintptr_t C_E_BASE_COORDS       = 0x0445B418;
 
+inline const std::vector<unsigned int> C_COORDS_OFFSETS         { 0x0, 0x240, 0x50, 0x298, 0xE0, 0x130, 0x1D0 };
 inline const std::vector<unsigned int> C_E_PLAYER_COORD_OFFSETS { 0x0, 0x530, 0xF8, 0xD0, 0x30, 0x420, 0x108 };
 inline const std::vector<unsigned int> C_FOV_OFFSETS            { 0x340, 0xB0, 0x8, 0x20, 0xA8, 0x40, 0x23C };
+inline const std::vector<unsigned int> C_CAMERA_MATRIX_OFFSETS  { 0x150, 0xB0, 0x20, 0xA8, 0x398, 0x548, 0x190 };
 
 // dev note: i found out by accident that some values are host client sensitive
 // i actually wanted to rip out my nerves realizing i gotta find it AGAIN
