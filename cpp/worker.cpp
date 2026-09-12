@@ -1,9 +1,9 @@
+#include <cmath>
 #include <windows.h>
 #include <vector>
 #include <thread>
 #include <chrono>
 #include <d3d11.h>
-#include <string.h>
 
 #include "headers/threadDeclarations.h"
 #include "headers/MEMoffsets.h"
@@ -76,13 +76,15 @@ void LocationWorker() {
             }
 
             char buffer[256];
-            snprintf(buffer, sizeof(buffer), "(%.1f, %.1f, %.1f)",
-                     enemyCoords.x, enemyCoords.y, enemyCoords.z);
+            snprintf(buffer, sizeof(buffer), "(%.1f, %.1f, %.1f)", enemyCoords.x, enemyCoords.y, enemyCoords.z);
+
             {
                 std::lock_guard<std::mutex> lock(g_LocationMutex);
                 g_LocationString = buffer;
+                g_LatestEnemyCoords = enemyCoords;
             }
         };
+
         Sleep(50);
     }
 }
@@ -113,7 +115,169 @@ void fovWorker(){
     }
 }
 
-void CheckPlayerAuth()
+void HostTP()
 {
-    // ruahasdash
+    while (baseAddress == 0 && g_Running)
+    {
+        Sleep(100);
+    }
+    while (g_Running)
+    {
+        if (!g_TP_Enemy)
+        {
+            uintptr_t currentLocationAddr = 0;
+
+            if (!g_TP_Enemy){currentLocationAddr = calculateAddress(H_BASE_COORDS, H_PLAYER_COORD_OFFSETS);}
+            else {currentLocationAddr = calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);}; // not working
+
+            if (currentLocationAddr != 0 && g_IsHost && g_TP_Pressed)
+            {
+                *(Vector3*)currentLocationAddr = SetLoc;
+            };
+        }
+
+        Sleep(10);
+    }
+}
+
+bool WorldToScreen(Vector3 worldPos, Vector2& screenPos, Matrix4x4 matrix, int windowWidth, int windowHeight, float& outDepth) {
+    Vector3 camPos = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
+
+    Vector3 relativeVector = { worldPos.x - camPos.x, worldPos.y - camPos.y, worldPos.z - camPos.z };
+
+    Vector3 vForward = { matrix.m[0][0], matrix.m[1][0], matrix.m[2][0] };
+    Vector3 vRight   = { matrix.m[0][1], matrix.m[1][1], matrix.m[2][1] };
+    Vector3 vUp      = { matrix.m[0][2], matrix.m[1][2], matrix.m[2][2] };
+
+    float wDepth = (relativeVector.x * vForward.x) + (relativeVector.y * vForward.y) + (relativeVector.z * vForward.z);
+
+    if (wDepth < 0.1f) return false;
+    outDepth = wDepth;
+
+    float xProjected = (relativeVector.x * vRight.x) + (relativeVector.y * vRight.y) + (relativeVector.z * vRight.z);
+    float yProjected = (relativeVector.x * vUp.x)    + (relativeVector.y * vUp.y)    + (relativeVector.z * vUp.z);
+
+    float screenCenterX = windowWidth / 2.0f;
+    float screenCenterY = windowHeight / 2.0f;
+
+    screenPos.x = screenCenterX + (xProjected * (screenCenterX / wDepth));
+    screenPos.y = screenCenterY - (yProjected * (screenCenterY / wDepth));
+
+    return true;
+}
+
+struct CameraProperties {
+    Vector3 Position;
+    Vector3 Rotation;
 };
+
+inline float DegreesToRadians(float degrees) {
+    return degrees * (3.1415926535f / 180.0f);
+}
+
+bool CalculateScreenCoordinates(Vector3 targetPos, CameraProperties cam, float currentFov, int width, int height, Vector2& screenPos) {
+    Vector3 delta = { targetPos.x - cam.Position.x, targetPos.y - cam.Position.y, targetPos.z - cam.Position.z };
+
+    float radPitch = DegreesToRadians(cam.Rotation.x);
+    float radYaw   = DegreesToRadians(cam.Rotation.y);
+
+    float cosYaw = cosf(radYaw);
+    float sinYaw = sinf(radYaw);
+    float cosPitch = cosf(radPitch);
+    float sinPitch = sinf(radPitch);
+
+    float forwardDepth = delta.x * (cosPitch * cosYaw) + delta.y * (cosPitch * sinYaw) + delta.z * sinPitch;
+    if (forwardDepth < 1.0f) return false;
+
+    float rightAxis = delta.x * (-sinYaw) + delta.y * cosYaw;
+    float upAxis    = delta.x * (-sinPitch * cosYaw) + delta.y * (-sinPitch * sinYaw) + delta.z * cosPitch;
+
+    float safeFov = (currentFov > 10.0f && currentFov < 180.0f) ? currentFov : 90.0f;
+    float fovScaling = 1.0f / tanf(DegreesToRadians(safeFov / 2.0f));
+
+    float screenWidth = (width > 0) ? (float)width : 1920.0f;
+    float screenHeight = (height > 0) ? (float)height : 1080.0f;
+    float aspectRatio = screenWidth / screenHeight;
+
+    float driftCalibrationModifier = 1.75f;
+    float driftCalibrationModifierY = 1.65f;
+
+    float deviceX = (rightAxis * (fovScaling * driftCalibrationModifier)) / (forwardDepth * aspectRatio);
+    float deviceY = (upAxis * fovScaling * driftCalibrationModifierY) / forwardDepth;
+
+    screenPos.x = (screenWidth / 2.0f) + (deviceX * (screenWidth / 2.0f));
+    screenPos.y = (screenHeight / 2.0f) - (deviceY * (screenHeight / 2.0f));
+
+    return true;
+}
+
+
+
+void espWorker()
+{
+    while (baseAddress == 0 && g_Running)
+    {
+        Sleep(100);
+    }
+
+    while (g_Running)
+    {
+        uintptr_t rotationAddr = 0;
+        uintptr_t fovAddr = 0;
+        uintptr_t myCoordsAddr = 0;
+        uintptr_t enemyCoordsAddr = 0;
+
+        if (g_IsHost) {
+            rotationAddr   = calculateAddress(H_CAMERA_MATRIX, H_CAMERA_MATRIX_OFFSETS);
+            fovAddr        = calculateAddress(H_FOV_BASE, H_FOV_OFFSETS);
+            myCoordsAddr   = calculateAddress(H_BASE_COORDS, H_PLAYER_COORD_OFFSETS);
+            enemyCoordsAddr = calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);
+        } else {
+            fovAddr        = calculateAddress(C_FOV_BASE, C_FOV_OFFSETS);
+            enemyCoordsAddr = calculateAddress(C_E_BASE_COORDS, C_E_PLAYER_COORD_OFFSETS);
+        }
+
+        if (rotationAddr != 0 && fovAddr != 0 && myCoordsAddr != 0 && enemyCoordsAddr != 0 &&
+            !IsBadReadPtr((void*)rotationAddr, sizeof(Vector3)) &&
+            !IsBadReadPtr((void*)fovAddr, sizeof(float)) &&
+            !IsBadReadPtr((void*)myCoordsAddr, sizeof(Vector3)) &&
+            !IsBadReadPtr((void*)enemyCoordsAddr, sizeof(Vector3)))
+        {
+            Vector3 localCamRot = *reinterpret_cast<Vector3*>(rotationAddr);
+            float localFov = *reinterpret_cast<float*>(fovAddr);
+            Vector3 localCamPos = *reinterpret_cast<Vector3*>(myCoordsAddr);
+            Vector3 enemyCoordsTarget = *reinterpret_cast<Vector3*>(enemyCoordsAddr);
+
+            CameraProperties localCam;
+            localCam.Position = localCamPos;
+            localCam.Rotation = localCamRot;
+
+            Vector2 screenCoords;
+            int screenWidth = 1920;
+            int screenHeight = 1080;
+
+            if (CalculateScreenCoordinates(enemyCoordsTarget, localCam, localFov, screenWidth, screenHeight, screenCoords))
+            {
+                g_EnemyScreenX = screenCoords.x;
+                g_EnemyScreenY = screenCoords.y;
+
+                float dx = enemyCoordsTarget.x - localCam.Position.x;
+                float dy = enemyCoordsTarget.y - localCam.Position.y;
+                float dz = enemyCoordsTarget.z - localCam.Position.z;
+                g_EnemyDistanceDepth = sqrtf(dx * dx + dy * dy + dz * dz);
+
+                g_DrawESP = true;
+            }
+            else
+            {
+                g_DrawESP = false;
+            }
+        }
+        else
+        {
+            g_DrawESP = false;
+        }
+
+        Sleep(16);
+    }
+}

@@ -15,8 +15,8 @@ void FreezeWorker();
 void AimbotWorker();
 void LocationWorker();
 void fovWorker();
-
-void CheckPlayerAuth();
+void HostTP();
+void espWorker();
 
 inline uintptr_t baseAddress = 0;
 
@@ -24,6 +24,8 @@ inline std::thread* g_FreezeThread = nullptr;
 inline std::thread* g_AimbotThread = nullptr;
 inline std::thread* g_LocationThread = nullptr;
 inline std::thread* g_FovThread = nullptr;
+inline std::thread* g_tpThread = nullptr;
+inline std::thread* g_EspThread = nullptr;
 
 inline std::atomic<bool> g_Running(true);
 inline std::atomic<bool> g_AimbotEnabled(false);
@@ -31,6 +33,10 @@ inline std::atomic<bool> g_FreezeEnabled(false);
 inline std::atomic<bool> g_SpeedHackEnabled(false);
 inline std::atomic<bool> g_ShowEnemyLocationEnabled(false);
 inline std::atomic<bool> g_EnableFovHack(false);
+inline std::atomic<bool> g_EnableEsp(false);
+
+inline std::atomic<bool> g_TP_Pressed(false);
+inline std::atomic<bool> g_TP_Enemy(false);
 
 inline std::atomic<float> g_SpeedMultiplier(1.0f);
 inline std::atomic<float> g_FovValue(90.0f);

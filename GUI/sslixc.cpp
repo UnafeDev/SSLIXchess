@@ -37,7 +37,9 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+#include <imgui_internal.h>
 #include "headers/threadDeclarations.h"
+#include "headers/MEMoffsets.h"
 
 typedef HRESULT(WINAPI* Present_t)(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 Present_t oPresent = nullptr;
@@ -116,94 +118,142 @@ HRESULT WINAPI hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Fla
         }
     }
 
-    // Handles loading buttons for the in game GUI
-    // Doing ImGui::param will create a new button
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
     ImGuiIO& io = ImGui::GetIO();
-    if (g_ShowMenu) {
-        io.MouseDrawCursor = true;
-    } else {
-        io.MouseDrawCursor = false;
+    io.MouseDrawCursor = g_ShowMenu;
+
+    if (g_EnableEsp && g_DrawESP) {
+        ImDrawList* drawList = ImGui::GetForegroundDrawList();
+        ImColor boxColor = ImColor(255, 0, 0, 255);
+        ImColor textColor = ImColor(255, 255, 255, 255);
+
+        float rawDistance = g_EnemyDistanceDepth;
+        if (rawDistance < 10.0f) rawDistance = 10.0f;
+
+        float baseScaleFactor = 1000000.0f;
+        float boxHeight = baseScaleFactor / rawDistance;
+
+        if (boxHeight < 25.0f)   boxHeight = 25.0f;
+        if (boxHeight > 800.0f)  boxHeight = 800.0f;
+
+        float boxWidth = boxHeight * 0.50f;
+
+        ImVec2 topLeft = ImVec2(g_EnemyScreenX - (boxWidth / 2.0f), g_EnemyScreenY - (boxHeight / 2.0f));
+        ImVec2 bottomRight = ImVec2(g_EnemyScreenX + (boxWidth / 2.0f), g_EnemyScreenY + (boxHeight / 2.0f));
+
+        drawList->AddRect(topLeft, bottomRight, boxColor, 0.0f, 0, 1.5f);
+
+        char debugBuffer[128];
+        snprintf(debugBuffer, sizeof(debugBuffer), "Enemy Dist: %.0f | BoxH: %.0f", rawDistance, boxHeight);
+        drawList->AddText(ImVec2(topLeft.x, topLeft.y - 15.0f), textColor, debugBuffer);
     }
 
+
+
     if (g_ShowMenu) {
-        ImGui_ImplDX11_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
         ImGui::Begin("SSLIXc FPSChess 1.2.9", &g_ShowMenu, ImGuiWindowFlags_AlwaysAutoResize);
-
-        void CheckPlayerAuth();
 
         ImGui::Text("Press [F8] or [HOME] to show/hide this menu.");
         ImGui::Separator();
-
         ImGui::Text("Please make sure this is correct!");
         bool auth = g_IsHost.load();
         if (ImGui::Checkbox("Playing As Host", &auth))
         {
             g_IsHost.store(auth);
         };
-
         ImGui::Separator();
 
-        // Where the UI begins
-        // Yes, the statement order matters; wherever the button is in the code is where it is in the GUI
-        bool showLoc = g_ShowEnemyLocationEnabled.load();
-        if (ImGui::Checkbox("Enable Location Display", &showLoc)) {
-            g_ShowEnemyLocationEnabled.store(showLoc);
-        }
-
-        if (showLoc) {
-            std::lock_guard<std::mutex> lock(g_LocationMutex);
-            ImGui::Text("Enemy Pos: %s", g_LocationString.c_str());
-        }
-
-        bool aimbot = g_AimbotEnabled.load();
-        if (ImGui::Checkbox("Aimbot Toggle", &aimbot)) g_AimbotEnabled.store(aimbot);
-
-        bool freeze = g_FreezeEnabled.load();
-        if (ImGui::Checkbox("Freeze Health", &freeze)) g_FreezeEnabled.store(freeze);
-
-        bool speedh = g_SpeedHackEnabled.load();
-        if (ImGui::Checkbox("Enable Speedhack", &speedh)) {
-            g_SpeedHackEnabled.store(speedh);
-            if (!speedh) g_SpeedMultiplier.store(1.0f);
-        }
-
-        if (speedh) {
-            float speed = g_SpeedMultiplier.load();
-            if (ImGui::SliderFloat("Speed Value", &speed, 1.0f, 10.0f, "%.1f")) {
-                g_SpeedMultiplier.store(speed);
-            }
-        }
-
-        ImGui::Separator();
-        bool fovh = g_EnableFovHack.load();
-        if (ImGui::Checkbox("Enable Fov Hack", &fovh))
+        if (ImGui::BeginTabBar("tabs"))
         {
-            g_EnableFovHack.store(fovh);
-        };
-
-        float fov = g_FovValue.load();
-        if (fovh)
-        {
-            if (ImGui::SliderFloat("Fov", &fov, 0, 250.0f, "%.1f"))
+            if (ImGui::BeginTabItem("UI Cheats"))
             {
-                g_FovValue.store(fov);
+                bool espToggle = g_EnableEsp.load();
+                if (ImGui::Checkbox("Enable Box ESP", &espToggle)) {
+                    g_EnableEsp.store(espToggle);
+                }
+                ImGui::EndTabItem();
             }
-        };
+            if (ImGui::BeginTabItem("Gameplay"))
+            {
+                bool aimbot = g_AimbotEnabled.load();
+                if (ImGui::Checkbox("Aimbot", &aimbot)) g_AimbotEnabled.store(aimbot);
 
-        // End of GUI
+                bool freeze = g_FreezeEnabled.load();
+                if (ImGui::Checkbox("Freeze Health", &freeze)) g_FreezeEnabled.store(freeze);
 
+                bool speedh = g_SpeedHackEnabled.load();
+                if (ImGui::Checkbox("Speedhack", &speedh)) {
+                    g_SpeedHackEnabled.store(speedh);
+                    if (!speedh) g_SpeedMultiplier.store(1.0f);
+                }
+
+                if (speedh) {
+                    float speed = g_SpeedMultiplier.load();
+                    if (ImGui::SliderFloat("Speed Value", &speed, 1.0f, 10.0f, "%.1f")) {
+                        g_SpeedMultiplier.store(speed);
+                    }
+                }
+
+                ImGui::Separator();
+                bool fovh = g_EnableFovHack.load();
+                if (ImGui::Checkbox("Enable Fov Hack", &fovh))
+                {
+                    g_EnableFovHack.store(fovh);
+                };
+
+                float fov = g_FovValue.load();
+                if (fovh)
+                {
+                    if (ImGui::SliderFloat("Fov", &fov, 0, 250.0f, "%.1f"))
+                    {
+                        g_FovValue.store(fov);
+                    }
+                };
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Teleportation"))
+            {
+                bool tpE = g_TP_Enemy.load();
+                if (ImGui::Checkbox("Teleport Enemy", &tpE) && g_IsHost)
+                {
+                    g_TP_Enemy.store(tpE);
+                }
+
+                const char* tpSpots[] = {"Bookshelf", "Fireplace", "Window", "Chandelier"};
+                static int tp = 0;
+                ImGui::Text("Select Location");
+                if (ImGui::Combo("<-", &tp, tpSpots, IM_ARRAYSIZE(tpSpots)) && g_IsHost)
+                {
+                    if      (tp == 0){SetLoc = g_TP_Location_BS;}
+                    else if (tp == 1){SetLoc = g_TP_Location_FP;}
+                    else if (tp == 2){SetLoc = g_TP_Location_WI;}
+                    else if (tp == 3){SetLoc = g_TP_Location_CH;}
+                }
+
+                if (ImGui::ButtonEx("Teleport", ImVec2(0,0), ImGuiButtonFlags_PressedOnClick) && g_IsHost)
+                {
+                    g_TP_Pressed.store(true); Sleep(10); g_TP_Pressed.store(false);
+                }
+
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
         ImGui::End();
-        ImGui::Render();
-
-        g_pd3dContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
+
+    ImGui::Render();
+    g_pd3dContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     return oPresent(pSwapChain, SyncInterval, Flags);
 }
+
 
 
 // GUI input capture
@@ -283,6 +333,8 @@ DWORD WINAPI MainCheatThread(LPVOID lpParam) {
     g_AimbotThread = new std::thread(AimbotWorker);
     g_LocationThread = new std::thread(LocationWorker);
     g_FovThread = new std::thread(fovWorker);
+    g_tpThread = new std::thread(HostTP);
+    g_EspThread = new std::thread(espWorker);
 
     while (g_Running) {
         if (GetAsyncKeyState(VK_F8) & 0x1) {
