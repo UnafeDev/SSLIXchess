@@ -3,8 +3,18 @@
 
 #include <cstdint>
 #include <vector>
+#include <atomic>
+/*
+ * Current working version: 1.2.9
+ *
+ * Was originally gonna be just for memory offsets, but I decided
+ * to save project size and put other structs and neccessary vars here
+ * might organize better in the future, so for now do NOT change anything
+ * that is not a memory offset or base value
+ *
+*/
 
-// structuer that will carry everything :Sob:
+// vectors and matrix defentitions for esp
 struct Vector3 {
     float x;
     float y;
@@ -17,15 +27,13 @@ struct Matrix4x4 {
     float m[4][4];
 };
 
-extern float g_EnemyScreenX;
-extern float g_EnemyScreenY;
-extern bool g_DrawESP;
+inline std::atomic<float> g_EnemyScreenX(0.0f);
+inline std::atomic<float> g_EnemyScreenY(0.0f);
+inline std::atomic<bool>  g_DrawESP(false);
 
-inline float g_EnemyScreenX = 0.0f;
-inline float g_EnemyScreenY = 0.0f;
 inline float g_EnemyDistanceDepth = 1.0f;
-inline bool g_DrawESP = false;
 
+// normal offsets start here
 // Universal
 inline constexpr uintptr_t PLAYER_HEALTH_BASE    = 0x0488FE68;
 inline const std::vector<unsigned int> PLAYER_HEALTH_OFFSETS    { 0x18, 0x240, 0x750, 0xA0, 0x538, 0x20, 0x580 };
@@ -59,7 +67,7 @@ inline const std::vector<unsigned int> C_CAMERA_MATRIX_OFFSETS  { 0x150, 0xB0, 0
 // won't give up tho </3
 
 // TP locations
-inline Vector3 SetLoc = {0.0f, 0.0f, 0.0f};
+inline Vector3 SetLoc = { 3110.95f, -8928.37f, 8857.20f }; // defaults to bookshelf since its the first option
 
 inline Vector3 g_TP_Location_BS = { 3110.95f, -8928.37f, 8857.20f };
 inline Vector3 g_TP_Location_FP = { 15731.55f, 15.09f, 2457.16f };

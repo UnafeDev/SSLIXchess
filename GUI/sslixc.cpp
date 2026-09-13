@@ -179,10 +179,15 @@ HRESULT WINAPI hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Fla
             if (ImGui::BeginTabItem("Gameplay"))
             {
                 bool aimbot = g_AimbotEnabled.load();
-                if (ImGui::Checkbox("Aimbot", &aimbot)) g_AimbotEnabled.store(aimbot);
+                if (ImGui::Checkbox("Aimbot [F1]", &aimbot)){
+                    g_AimbotEnabled.store(aimbot);
+                    if (!g_EnableEsp){
+                        g_EnableEsp.store(true);
+                    };
+                };
 
                 bool freeze = g_FreezeEnabled.load();
-                if (ImGui::Checkbox("Freeze Health", &freeze)) g_FreezeEnabled.store(freeze);
+                if (ImGui::Checkbox("Freeze Health [HOST]", &freeze)) g_FreezeEnabled.store(freeze);
 
                 bool speedh = g_SpeedHackEnabled.load();
                 if (ImGui::Checkbox("Speedhack", &speedh)) {
@@ -218,12 +223,6 @@ HRESULT WINAPI hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Fla
 
             if (ImGui::BeginTabItem("Teleportation"))
             {
-                bool tpE = g_TP_Enemy.load();
-                if (ImGui::Checkbox("Teleport Enemy", &tpE) && g_IsHost)
-                {
-                    g_TP_Enemy.store(tpE);
-                }
-
                 const char* tpSpots[] = {"Bookshelf", "Fireplace", "Window", "Chandelier"};
                 static int tp = 0;
                 ImGui::Text("Select Location");
@@ -238,6 +237,10 @@ HRESULT WINAPI hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Fla
                 if (ImGui::ButtonEx("Teleport", ImVec2(0,0), ImGuiButtonFlags_PressedOnClick) && g_IsHost)
                 {
                     g_TP_Pressed.store(true); Sleep(10); g_TP_Pressed.store(false);
+                }
+                if (ImGui::ButtonEx("Teleport Enemy", ImVec2(0,0), ImGuiButtonFlags_PressedOnClick) && g_IsHost)
+                {
+                    g_TP_Pressed.store(true); g_TP_Enemy.store(true); Sleep(10); g_TP_Pressed.store(false); g_TP_Enemy.store(false);
                 }
 
                 ImGui::EndTabItem();
@@ -329,17 +332,33 @@ DWORD WINAPI MainCheatThread(LPVOID lpParam) {
 
     // Handles spinning up the threads for the active cheats
     // To add more use threadDeclarations.h to create the new thread variable
-    g_FreezeThread = new std::thread(FreezeWorker);
-    g_AimbotThread = new std::thread(AimbotWorker);
+    g_FreezeThread   = new std::thread(FreezeWorker);
+    g_AimbotThread   = new std::thread(AimbotWorker);
     g_LocationThread = new std::thread(LocationWorker);
-    g_FovThread = new std::thread(fovWorker);
-    g_tpThread = new std::thread(HostTP);
-    g_EspThread = new std::thread(espWorker);
+    g_FovThread      = new std::thread(fovWorker);
+    g_tpThread       = new std::thread(HostTP);
+    g_EspThread      = new std::thread(espWorker);
 
     while (g_Running) {
         if (GetAsyncKeyState(VK_F8) & 0x1) {
             g_ShowMenu = !g_ShowMenu;
         }
+
+        if (GetAsyncKeyState(VK_F1) & 0x1)
+        {
+            bool aimbot = g_AimbotEnabled.load();
+            if (aimbot)
+            {
+                g_AimbotEnabled.store(false);
+            }
+            else
+            {
+                if (!g_EnableEsp){
+                    g_EnableEsp.store(true);
+                };
+                g_AimbotEnabled.store(true);
+            };
+        };
 
         if (GetAsyncKeyState(VK_HOME) & 0x1) {
             g_ShowMenu = !g_ShowMenu;
@@ -363,7 +382,9 @@ DWORD WINAPI MainCheatThread(LPVOID lpParam) {
     }
     if (g_LocationThread) {
         if (g_LocationThread->joinable()) g_LocationThread->join();
-        delete g_LocationThread; }
+        delete g_LocationThread;
+    }
+
 
     if (g_ImGuiInitialized) {
         SetWindowLongPtr(g_hWnd, GWLP_WNDPROC, (LONG_PTR)oWndProc);

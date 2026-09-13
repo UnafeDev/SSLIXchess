@@ -9,6 +9,8 @@
 // It should be included in all cpp files for functionality
 // to find the actual cheat functions, make your way to worker.cpp
 
+// I got too lazy to make another header for the void delcarations and other strings, so they're also here
+
 inline std::atomic<bool> g_IsHost(false);
 
 void FreezeWorker();

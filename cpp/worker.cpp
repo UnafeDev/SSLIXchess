@@ -8,7 +8,6 @@
 #include "headers/threadDeclarations.h"
 #include "headers/MEMoffsets.h"
 
-
 // Address helper
 // Fetches the right address from the BASE and OFFSETS
 uintptr_t calculateAddress(uintptr_t address, std::vector<unsigned int> offsets) {
@@ -34,17 +33,6 @@ void FreezeWorker() {
             if (addr != 0 && !IsBadWritePtr((void*)addr, sizeof(float))) {
                 *(float*)addr = freezeValue;
             }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-}
-
-// Do I really need a comment for this?
-// Don't work yet
-void AimbotWorker() {
-    while (g_Running) {
-        if (g_AimbotEnabled.load()) {
-            // Aimbot stuff
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -123,14 +111,14 @@ void HostTP()
     }
     while (g_Running)
     {
-        if (!g_TP_Enemy)
+        if (g_TP_Pressed)
         {
             uintptr_t currentLocationAddr = 0;
 
             if (!g_TP_Enemy){currentLocationAddr = calculateAddress(H_BASE_COORDS, H_PLAYER_COORD_OFFSETS);}
-            else {currentLocationAddr = calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);}; // not working
+            else {currentLocationAddr = calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);} // not working
 
-            if (currentLocationAddr != 0 && g_IsHost && g_TP_Pressed)
+            if (currentLocationAddr != 0 && g_IsHost)
             {
                 *(Vector3*)currentLocationAddr = SetLoc;
             };
@@ -140,6 +128,10 @@ void HostTP()
     }
 }
 
+
+// all of this is for esp
+// WTS is to let ImGui paint a box in the correct area
+// Basically 3D -> 2D mixed space for the box to render properly
 bool WorldToScreen(Vector3 worldPos, Vector2& screenPos, Matrix4x4 matrix, int windowWidth, int windowHeight, float& outDepth) {
     Vector3 camPos = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
 
@@ -175,6 +167,8 @@ inline float DegreesToRadians(float degrees) {
     return degrees * (3.1415926535f / 180.0f);
 }
 
+// Enemy location grabber for the 2D space
+// Also calculates the FOV, yaw, pitch, and roll for accurate box sizes
 bool CalculateScreenCoordinates(Vector3 targetPos, CameraProperties cam, float currentFov, int width, int height, Vector2& screenPos) {
     Vector3 delta = { targetPos.x - cam.Position.x, targetPos.y - cam.Position.y, targetPos.z - cam.Position.z };
 
@@ -211,8 +205,21 @@ bool CalculateScreenCoordinates(Vector3 targetPos, CameraProperties cam, float c
     return true;
 }
 
+// Safe, compiler-agnostic pointer validation using VirtualQuery
+bool IsValidPointer(const void* ptr, size_t size) {
+    if (!ptr) return false;
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery(ptr, &mbi, sizeof(mbi)) == 0) return false;
 
+    if (mbi.State != MEM_COMMIT) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
 
+    DWORD validMask = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
+                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+    return (mbi.Protect & validMask) != 0;
+}
+
+// reads, writes and enables the ESP box to be drawn
 void espWorker()
 {
     while (baseAddress == 0 && g_Running)
@@ -228,22 +235,22 @@ void espWorker()
         uintptr_t enemyCoordsAddr = 0;
 
         if (g_IsHost) {
-            rotationAddr   = calculateAddress(H_CAMERA_MATRIX, H_CAMERA_MATRIX_OFFSETS);
+            rotationAddr    = calculateAddress(H_CAMERA_MATRIX, H_CAMERA_MATRIX_OFFSETS);
             fovAddr        = calculateAddress(H_FOV_BASE, H_FOV_OFFSETS);
             myCoordsAddr   = calculateAddress(H_BASE_COORDS, H_PLAYER_COORD_OFFSETS);
             enemyCoordsAddr= calculateAddress(H_E_BASE_COORDS, H_E_PLAYER_COORD_OFFSETS);
         } else {
-            rotationAddr   = calculateAddress(C_CAMERA_MATRIX, C_CAMERA_MATRIX_OFFSETS);
+            rotationAddr    = calculateAddress(C_CAMERA_MATRIX, C_CAMERA_MATRIX_OFFSETS);
             fovAddr        = calculateAddress(C_FOV_BASE, C_FOV_OFFSETS);
             myCoordsAddr   = calculateAddress(C_BASE_COORDS, C_COORDS_OFFSETS);
             enemyCoordsAddr= calculateAddress(C_E_BASE_COORDS, C_E_PLAYER_COORD_OFFSETS);
         }
 
         if (rotationAddr != 0 && fovAddr != 0 && myCoordsAddr != 0 && enemyCoordsAddr != 0 &&
-            !IsBadReadPtr((void*)rotationAddr, sizeof(Vector3)) &&
-            !IsBadReadPtr((void*)fovAddr, sizeof(float)) &&
-            !IsBadReadPtr((void*)myCoordsAddr, sizeof(Vector3)) &&
-            !IsBadReadPtr((void*)enemyCoordsAddr, sizeof(Vector3)))
+            IsValidPointer((void*)rotationAddr, sizeof(Vector3)) &&
+            IsValidPointer((void*)fovAddr, sizeof(float)) &&
+            IsValidPointer((void*)myCoordsAddr, sizeof(Vector3)) &&
+            IsValidPointer((void*)enemyCoordsAddr, sizeof(Vector3)))
         {
             Vector3 localCamRot = *reinterpret_cast<Vector3*>(rotationAddr);
             float localFov = *reinterpret_cast<float*>(fovAddr);
@@ -260,26 +267,80 @@ void espWorker()
 
             if (CalculateScreenCoordinates(enemyCoordsTarget, localCam, localFov, screenWidth, screenHeight, screenCoords))
             {
-                g_EnemyScreenX = screenCoords.x;
-                g_EnemyScreenY = screenCoords.y;
+                g_EnemyScreenX.store(screenCoords.x);
+                g_EnemyScreenY.store(screenCoords.y);
 
                 float dx = enemyCoordsTarget.x - localCam.Position.x;
                 float dy = enemyCoordsTarget.y - localCam.Position.y;
                 float dz = enemyCoordsTarget.z - localCam.Position.z;
                 g_EnemyDistanceDepth = sqrtf(dx * dx + dy * dy + dz * dz);
 
-                g_DrawESP = true;
+                g_DrawESP.store(true);
             }
             else
             {
-                g_DrawESP = false;
+                g_DrawESP.store(false);
             }
         }
         else
         {
-            g_DrawESP = false;
+            g_DrawESP.store(false);
         }
 
         Sleep(16);
+    }
+}
+
+// Do I really need a comment for this?
+// Don't work yet
+
+void AimbotWorker() {
+    float remainderX = 0.0f;
+    float remainderY = 0.0f;
+
+    while (g_Running) {
+        if (g_AimbotEnabled.load() && g_DrawESP.load()) {
+            float screenCenterX = 1920.0f / 2.0f;
+            float screenCenterY = 1080.0f / 2.0f;
+
+            float targetX = g_EnemyScreenX.load();
+            float targetY = g_EnemyScreenY.load();
+
+            float x = (targetX - screenCenterX) + remainderX;
+            float y = (targetY - screenCenterY) + remainderY;
+
+            float distanceFromCenter = sqrtf(x * x + y * y);
+            float maxFovPixels = 300.0f;
+
+            if (distanceFromCenter < maxFovPixels && distanceFromCenter > 1.0f) {
+                float smoothing = 5.0f;
+
+                float moveXFloat = x / smoothing;
+                float moveYFloat = y / smoothing;
+
+                LONG moveX = (LONG)moveXFloat;
+                LONG moveY = (LONG)moveYFloat;
+
+                // Save fractional remainder for the next tick
+                remainderX = moveXFloat - (float)moveX;
+                remainderY = moveYFloat - (float)moveY;
+
+                if (moveX != 0 || moveY != 0) {
+                    INPUT input = { 0 };
+                    input.type = INPUT_MOUSE;
+                    input.mi.dx = moveX;
+                    input.mi.dy = moveY;
+                    input.mi.dwFlags = MOUSEEVENTF_MOVE;
+                    SendInput(1, &input, sizeof(INPUT));
+                }
+            } else {
+                remainderX = 0.0f;
+                remainderY = 0.0f;
+            }
+        } else {
+            remainderX = 0.0f;
+            remainderY = 0.0f;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
