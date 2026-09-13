@@ -205,20 +205,6 @@ bool CalculateScreenCoordinates(Vector3 targetPos, CameraProperties cam, float c
     return true;
 }
 
-// Safe, compiler-agnostic pointer validation using VirtualQuery
-bool IsValidPointer(const void* ptr, size_t size) {
-    if (!ptr) return false;
-    MEMORY_BASIC_INFORMATION mbi;
-    if (VirtualQuery(ptr, &mbi, sizeof(mbi)) == 0) return false;
-
-    if (mbi.State != MEM_COMMIT) return false;
-    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
-
-    DWORD validMask = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
-                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    return (mbi.Protect & validMask) != 0;
-}
-
 // reads, writes and enables the ESP box to be drawn
 void espWorker()
 {
@@ -247,10 +233,10 @@ void espWorker()
         }
 
         if (rotationAddr != 0 && fovAddr != 0 && myCoordsAddr != 0 && enemyCoordsAddr != 0 &&
-            IsValidPointer((void*)rotationAddr, sizeof(Vector3)) &&
-            IsValidPointer((void*)fovAddr, sizeof(float)) &&
-            IsValidPointer((void*)myCoordsAddr, sizeof(Vector3)) &&
-            IsValidPointer((void*)enemyCoordsAddr, sizeof(Vector3)))
+            !IsBadReadPtr((void*)rotationAddr, sizeof(Vector3)) &&
+            !IsBadReadPtr((void*)fovAddr, sizeof(float)) &&
+            !IsBadReadPtr((void*)myCoordsAddr, sizeof(Vector3)) &&
+            !IsBadReadPtr((void*)enemyCoordsAddr, sizeof(Vector3)))
         {
             Vector3 localCamRot = *reinterpret_cast<Vector3*>(rotationAddr);
             float localFov = *reinterpret_cast<float*>(fovAddr);
