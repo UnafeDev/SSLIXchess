@@ -1,4 +1,6 @@
 # SSLIXc Launcher
+### original repo was posted to [Codeberg](https://codeberg.org/UnafeDev/SSLIXchess/releases)
+
 Hi, I'm UnafeDev, a first timer with CPP. This is my first project in the language... a game cheat, I've always wanted to make one myself but never did since I was a python developer. I don't know how to bypass silly things like server side auth, so no client flight, infinite health :sadge:
 
 Hope you can enjoy reading or using my project!
